@@ -147,7 +147,7 @@ int fileread(struct file *f, uint64 addr, int n)
 
 // Write to file f.
 // addr is a user virtual address.
-int filewrite(struct file *f, uint64 addr, int n)
+int filewrite(struct file * f, uint64 addr, int n)
 {
 	int r, ret = 0;
 
@@ -170,7 +170,7 @@ int filewrite(struct file *f, uint64 addr, int n)
 		// this really belongs lower down, since writei()
 		// might be writing a device like the console.
 
-		int max = ((MAXOPBLOCKS-1-1-2) / 2) * BSIZE;
+		int max = ((MAXOPBLOCKS - 1 - 1 - 2) / 2) * BSIZE;
 		int i = 0;
 
 		while(i < n) {

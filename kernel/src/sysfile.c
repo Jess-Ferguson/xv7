@@ -275,7 +275,7 @@ static struct inode * create(char * path, short type, short major, short minor)
 	dp->inode_ops->ilock(dp);
 
 	if((ip = dp->inode_ops->dir_lookup(dp, name, 0)) != 0) {
-		ip->inode_ops->iunlockput(dp);
+		dp->inode_ops->iunlockput(dp);
 		ip->inode_ops->ilock(ip);
 
 		if(type == T_FILE && (ip->type == T_FILE || ip->type == T_DEVICE))
@@ -286,15 +286,13 @@ static struct inode * create(char * path, short type, short major, short minor)
 		return 0;
 	}
 
-	if((ip = root_fs->vfs_ops->ialloc(dp->dev, type)) == 0)
+	if((ip = root_fs->vfs_ops->ialloc(dp->dev, type)) == 0) // This should really use the major and minor numbers to reference a list of devices and find the corresponding superblock
 		panic("create: ialloc");
-
 	ip->inode_ops->ilock(ip);
 
 	ip->major = major;
 	ip->minor = minor;
 	ip->nlink = 1;
-
 	ip->inode_ops->iupdate(ip);
 
 	if(type == T_DIR) {  // Create . and .. entries.

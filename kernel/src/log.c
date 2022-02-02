@@ -73,7 +73,7 @@ static void install_trans(int recovering)
 	int tail;
 
 	for (tail = 0; tail < log.lh.n; tail++) {
-		struct buf * lbuf = sb.vfs_ops->bread(log.dev, log.start+tail+1); // read log block
+		struct buf * lbuf = sb.vfs_ops->bread(log.dev, log.start + tail + 1); // read log block
 		struct buf * dbuf = sb.vfs_ops->bread(log.dev, log.lh.block[tail]); // read dst
 
 		kmemmove(dbuf->data, lbuf->data, BSIZE);  // copy block to dst
@@ -137,10 +137,10 @@ void begin_op(void)
 {
 	acquire(&log.lock);
 
-	while(1){
-		if(log.committing){
+	while(1) {
+		if(log.committing) {
 			_sleep(&log, &log.lock);
-		} else if(log.lh.n + (log.outstanding+1)*MAXOPBLOCKS > LOGSIZE){
+		} else if(log.lh.n + (log.outstanding+1)*MAXOPBLOCKS > LOGSIZE) {
 			// this op might exhaust log space; wait for commit.
 			_sleep(&log, &log.lock);
 		} else {
@@ -236,10 +236,8 @@ void log_write(struct buf * b)
 
 	acquire(&log.lock);
 
-	if(log.lh.n >= LOGSIZE || log.lh.n >= log.size - 1) {
-		kprintf("%d %d %d\n", log.lh.n, LOGSIZE, log.size - 1);
+	if(log.lh.n >= LOGSIZE || log.lh.n >= log.size - 1)
 		panic("too big a transaction");
-	}
 
 	if(log.outstanding < 1) {
 		panic("log_write outside of trans");

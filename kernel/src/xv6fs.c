@@ -22,9 +22,6 @@ void xv6_ifree(struct inode * index_node);
 uint xv6_balloc(uint dev);
 void xv6_bzero(int dev, int block_num);
 void xv6_bfree(int dev, uint block_num);
-void xv6_brelease(struct buf * buffer);
-void xv6_bwrite(struct buf * buffer);
-struct buf * xv6_bread(uint dev, uint block_num);
 int xv6_name_cmp(const char * source, const char * dest);
 
 /* Inode Operations */
@@ -166,6 +163,8 @@ struct inode * xv6_iget(uint dev, uint inum)
 	ip->inum = inum;
 	ip->ref = 1;
 	ip->valid = 0;
+	ip->inode_ops = &xv6_inode_ops;
+	
 	release(&itable.lock);
 
 	return ip;
@@ -227,7 +226,7 @@ uint xv6_balloc(uint dev)
 			m = 1 << (bi % 8);
 			if((bp->data[bi / 8] & m) == 0) {  // Is block free?
 				bp->data[bi / 8] |= m;  // Mark block in use.
-				
+
 				log_write(bp);
 				xv6_vfs_ops.brelease(bp);
 				xv6_vfs_ops.bzero(dev, b + bi);
@@ -248,6 +247,7 @@ void xv6_bzero(int dev, int block_num)
 
 	bp = xv6_vfs_ops.bread(dev, block_num);
 	kmemset(bp->data, 0, XV6_BLOCK_SIZE);
+
 	log_write(bp);
 	xv6_vfs_ops.brelease(bp);
 }
@@ -268,21 +268,6 @@ void xv6_bfree(int dev, uint block_num)
 
 	log_write(bp);
 	xv6_vfs_ops.brelease(bp);
-}
-
-void xv6_brelease(struct buf * buffer)
-{
-	panic("xv6_brelease() not implemented!");
-}
-
-void xv6_bwrite(struct buf * buffer)
-{
-	panic("xv6_bwrite() not implemented!");
-}
-
-struct buf * xv6_bread(uint dev, uint block_num)
-{
-	panic("xv6_bread() not implemented!");
 }
 
 int xv6_name_cmp(const char * source, const char * dest)
@@ -346,6 +331,7 @@ void xv6_iupdate(struct inode *ip)
 	dip->size = ip->size;
 
 	kmemmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
+
 	log_write(bp);
 	xv6_vfs_ops.brelease(bp);
 }
@@ -418,6 +404,7 @@ uint xv6_bmap(struct inode * ip, uint bn)
 
 		if((addr = a[bn]) == 0) {
 			a[bn] = addr = xv6_vfs_ops.balloc(ip->dev);
+
 			log_write(bp);
 		}
 
