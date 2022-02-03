@@ -3,6 +3,7 @@ USER_DIR := user/
 KERNEL_OBJ_DIR := $(KERNEL_DIR)obj/
 KERNEL_SRC_DIR := $(KERNEL_DIR)src/
 KERNEL_INCLUDE_DIR := $(KERNEL_DIR)include/
+XV6_FS_TOOL_DIR := mkxv6fs/
 
 _KERNEL_OBJS := \
 	start.o \
@@ -146,8 +147,8 @@ $(USER_DIR)_forktest: $(USER_DIR)forktest.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $(USER_DIR)_forktest $(USER_DIR)forktest.o $(USER_DIR)ulib.o $(USER_DIR)usys.o
 	$(OBJDUMP) -S $(USER_DIR)_forktest > $(USER_DIR)forktest.asm
 
-mkfs/mkfs: mkfs/mkfs.c
-	gcc -Werror -Wall -I/usr/include -I. -I$(KERNEL_INCLUDE_DIR) -o mkfs/mkfs mkfs/mkfs.c
+$(XV6_FS_TOOL_DIR)mkxv6fs: $(XV6_FS_TOOL_DIR)mkxv6fs.c
+	gcc -Werror -Wall -I/usr/include -I. -I$(KERNEL_INCLUDE_DIR) -o $@ $^
 
 # Prevent deletion of intermediate files, e.g. cat.o, after first build, so
 # that disk image changes after first build are persistent until clean.	More
@@ -173,8 +174,8 @@ UPROGS=\
 	$(USER_DIR)_wc\
 	$(USER_DIR)_zombie\
 
-fs.img: mkfs/mkfs README $(UPROGS)
-	mkfs/mkfs fs.img README $(UPROGS)
+fs.img: $(XV6_FS_TOOL_DIR)mkxv6fs README $(UPROGS)
+	$(XV6_FS_TOOL_DIR)mkxv6fs fs.img README $(UPROGS)
 	#mv $(UPROGS) mnt/
 	#rename 's/_//;' mnt/*
 	#genext2fs -b 25000 -B 1024 -d mnt fs.img

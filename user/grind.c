@@ -307,8 +307,6 @@ void iter()
 		exit(1);
 	}
 
-	printf("Fork 1 success\n");
-
 	if(pid1 == 0){
 		rand_next = 31;
 
@@ -316,9 +314,7 @@ void iter()
 		exit(0);
 	}
 
-	/*int pid2 = fork();
-
-	printf("Fork 2 success\n");
+	int pid2 = fork();
 
 	if(pid2 < 0){
 		printf("grind: fork failed\n");
@@ -330,7 +326,7 @@ void iter()
 
 		go(1);
 		exit(0);
-	}*/
+	}
 
 	int st1 = -1;
 
@@ -338,12 +334,12 @@ void iter()
 
 	if(st1 != 0){
 		kill(pid1);
-		//kill(pid2);
+		kill(pid2);
 	}
 
-	//int st2 = -1;
+	int st2 = -1;
 
-	//wait(&st2);
+	wait(&st2);
 
 	exit(0);
 }

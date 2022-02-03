@@ -195,4 +195,6 @@ void            virtio_disk_intr(void);
 #define ROOTINO  1   // root i-number
 #define BSIZE 1024  // block size
 
+#define NULL ((void *) 0)
+
 #endif

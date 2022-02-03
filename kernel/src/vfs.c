@@ -69,8 +69,12 @@ void root_init(int dev)
 					kprintf("Loaded valid Xv6 file system as root device!\n");
 					return;
 				case EXT2_MAGIC:
-					kprintf("Superblock matched EXT2!\n");
-					panic("EXT2 not yet implemented!");
+					root_fs = kalloc(); /* Allocate a 4KB block for the root_fs */
+					kmemmove(root_fs, &vfs_list[1], sizeof(struct vfs));
+					kmemmove(&root_fs->superblock, &superblock, sizeof(struct superblock));
+
+					kprintf("Loaded valid ext2 file system as root device!\n");
+					return;
 				default:
 					panic("No implementation available for initialising FS type!");
 			}
