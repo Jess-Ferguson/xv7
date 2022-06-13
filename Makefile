@@ -4,6 +4,7 @@ KERNEL_OBJ_DIR := $(KERNEL_DIR)/obj
 KERNEL_SRC_DIR := $(KERNEL_DIR)/src
 KERNEL_INCLUDE_DIR := $(KERNEL_DIR)/include
 XV6_FS_TOOL_DIR := mkxv6fs
+MNTDIR := mnt
 
 _KERNEL_OBJS := \
 	start.o \
@@ -201,10 +202,13 @@ QEMUOPTS = -machine virt -bios none -kernel $(KERNEL_DIR)/kernel -m 128M -smp $(
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
+$(MNTDIR):
+	mkdir $(MNTDIR)
+
 xv6fs: mkxv6fs README $(UPROGS)
 	$(XV6_FS_TOOL_DIR)/mkxv6fs fs.img README $(UPROGS)
 
-ext2fs: README $(UPROGS)
+ext2fs: README $(UPROGS) $(MNTDIR)
 	mv $(UPROGS) mnt/
 	rename 's/_//;' mnt/*
 	sudo mke2fs -b 1024 -d mnt fs.img 2500
