@@ -25,7 +25,7 @@ void            bunpin(struct buf*);
 
 // console.c
 void            consoleinit(void);
-void            consoleintr(int);
+void			consoleintr(int);
 void            consputc(int);
 
 // exec.c
@@ -36,9 +36,9 @@ struct file*    filealloc(void);
 void            fileclose(struct file*);
 struct file*    filedup(struct file*);
 void            fileinit(void);
-int             fileread(struct file*, uint64, int n);
-int             filestat(struct file*, uint64 addr);
-int             filewrite(struct file*, uint64, int n);
+int             fileread(struct file *, uint64, int);
+int             filestat(struct file *f, uint64);
+int             filewrite(struct file *, uint64, int);
 
 // vfs.c
 void			root_init(int dev);
@@ -137,6 +137,7 @@ char*           ksafestrcpy(char*, const char*, int);
 int             kstrlen(const char*);
 int             kstrncmp(const char*, const char*, uint);
 char*           kstrncpy(char*, const char*, int);
+void * 			kmemscan(void * addr, int c, int size);
 
 // syscall.c
 int             argint(int, int*);

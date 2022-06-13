@@ -19,6 +19,7 @@ int exec(char * path, char ** argv)
 	struct inode * ip;
 	struct proghdr ph;
 	pagetable_t pagetable = 0, oldpagetable;
+
 	struct proc * p = myproc();
 
 	begin_op();
@@ -27,8 +28,7 @@ int exec(char * path, char ** argv)
 		end_op();
 		return -1;
 	}
-
-
+	
 	ip->inode_ops->ilock(ip);
 
 	// Check ELF header
@@ -75,7 +75,7 @@ int exec(char * path, char ** argv)
 		if(loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
 			goto bad;
 	}
-
+	
 	ip->inode_ops->iunlockput(ip);
 	end_op();
 

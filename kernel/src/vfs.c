@@ -64,9 +64,10 @@ void root_init(int dev)
 					root_fs = kalloc(); /* Allocate a 4KB block for the root_fs */
 					kmemmove(root_fs, &vfs_list[0], sizeof(struct vfs));
 					kmemmove(&root_fs->superblock, &superblock, sizeof(struct superblock));
+
 					initlog(dev);
 					
-					kprintf("Loaded valid Xv6 file system as root device!\n");
+					kprintf("Loaded valid xv6 file system as root device!\n");
 					return;
 				case EXT2_MAGIC:
 					root_fs = kalloc(); /* Allocate a 4KB block for the root_fs */
@@ -158,9 +159,6 @@ void iinit()
 	int i = 0;
 	
 	initlock(&itable.lock, "itable");
-	for(i = 0; i < NINODE; i++) {
-		initsleeplock(&itable.inode[i].lock, "inode");
-	}
 }
 
 // Increment reference count for ip.
@@ -212,40 +210,6 @@ static char * skipelem(char * path, char * name)
 	return path;
 }
 
-struct inode * iget(uint dev, uint inum)
-{
-	struct inode * ip, * empty;
-
-	acquire(&itable.lock);
-
-	// Is the inode already in the table?
-	empty = 0;
-
-	for(ip = &itable.inode[0]; ip < &itable.inode[NINODE]; ip++) {
-		if(ip->ref > 0 && ip->dev == dev && ip->inum == inum) {
-			ip->ref++;
-			release(&itable.lock);
-			return ip;
-		}
-
-		if(empty == 0 && ip->ref == 0)    // Remember empty slot.
-			empty = ip;
-	}
-
-	// Recycle an inode entry.
-	if(empty == 0)
-		panic("iget(): no inodes");
-
-	ip = empty;
-	ip->dev = dev;
-	ip->inum = inum;
-	ip->ref = 1;
-	ip->valid = 0;
-	release(&itable.lock);
-
-	return ip;
-}
-
 // Look up and return the inode for a path name.
 // If parent != 0, return the inode for the parent and copy the final
 // path element into name, which must have room for DIRSIZ bytes.
@@ -255,18 +219,18 @@ static struct inode * namex(char * path, int nameiparent, char * name)
 	struct inode * ip, * next;
 
 	if(*path == '/') {
-		ip = iget(ROOTDEV, ROOTINO);
+		ip = root_fs->vfs_ops->get_root(ROOTDEV);
 	} else {
-		ip = root_fs->inode_ops->idup(myproc()->cwd); /* This needs to be generalised somehow to support multiple file systems simultaneously in the future */
+		ip = root_fs->inode_ops->idup(myproc()->cwd);
 	}
 
 	while((path = skipelem(path, name)) != 0) {
 		if(!ip->inode_ops) {
 			if(root_fs) {
 				ip->inode_ops = root_fs->inode_ops;
+				ip->vfs_ops = root_fs->vfs_ops;
 			} else {
 				kprintf("Possibly fatal: inode_ops needed but no root_fs available\n");
-				//panic("inode_ops needed and root_fs not initialised!\n");
 			}
 		}
 
@@ -297,9 +261,6 @@ static struct inode * namex(char * path, int nameiparent, char * name)
 		ip->inode_ops->iput(ip);
 		return 0;
 	}
-
-	//kprintf("namex() ip: %p\n", ip);
-	//kprintf("namex() ip->inode_ops: %p\n", ip->inode_ops);
 
 	return ip;
 }

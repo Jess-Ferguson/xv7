@@ -57,15 +57,16 @@ void binit(void)
 static struct buf * bget(uint dev, uint blockno)
 {
 	struct buf * b;
-
+	
 	acquire(&bcache.lock);
-
+	
 	// Is the block already cached?
 	for(b = bcache.head.next; b != &bcache.head; b = b->next) {
 		if(b->dev == dev && b->blockno == blockno) {
 			b->refcnt++;
 			release(&bcache.lock);
 			acquiresleep(&b->lock);
+
 			return b;
 		}
 	}
@@ -121,7 +122,6 @@ void brelease(struct buf *b)
 		panic("brelease");
 
 	releasesleep(&b->lock);
-
 	acquire(&bcache.lock);
 
 	b->refcnt--;

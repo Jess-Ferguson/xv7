@@ -30,7 +30,8 @@ _KERNEL_OBJS := \
 	plic.o \
 	virtio_disk.o \
 	xv6fs.o \
-	ext2.o
+	ext2.o \
+	find_bits.o
 
 _KERNEL_ASM_OBJS := \
 	entry.o \
@@ -46,6 +47,7 @@ _KERNEL_DEPS := \
 	ext2.h \
 	fcntl.h \
 	file.h \
+	find_bits.h \
 	memlayout.h \
 	param.h \
 	proc.h \
@@ -88,7 +90,7 @@ LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 
-CFLAGS = -O -fno-omit-frame-pointer -ggdb -Wall # -Werror
+CFLAGS = -O -fno-omit-frame-pointer -ggdb -Wall -Wextra -Wpedantic
 CFLAGS += -MD -g
 CFLAGS += -mcmodel=medany
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
@@ -122,8 +124,8 @@ $(KERNEL_OBJ_DIR)/%.o: $(KERNEL_SRC_DIR)/%.S
 	@$(CC) -c -o $@ $< $(CFLAGS)
 
 $(KERNEL_OBJ_DIR)/%.o: $(KERNEL_SRC_DIR)/%.c
-	@echo [CC] $(CC) $(C_FLAGS) -o $@ -c $< $(CFLAGS)
-	@$(CC) $(C_FLAGS) -o $@ -c $< $(CFLAGS)
+	@echo [CC] $(CC) -c -o $@ $< $(CFLAGS)
+	@$(CC) -c -o $@ $< $(CFLAGS)
 
 tags: $(OBJS) _init
 	etags *.S *.c
@@ -176,12 +178,6 @@ _UPROGS=\
 
 UPROGS = $(patsubst %,$(USER_DIR)/%,$(_UPROGS))
 
-fs.img: mkxv6fs README $(UPROGS)
-	$(XV6_FS_TOOL_DIR)/mkxv6fs fs.img README $(UPROGS)
-	#mv $(UPROGS) mnt/
-	#rename 's/_//;' mnt/*
-	#genext2fs -b 25000 -B 1024 -d mnt fs.img
-
 -include $(KERNEL_DIR)/$(OBJ_DIR)/*.d user/*.d
 
 clean: 
@@ -189,7 +185,7 @@ clean:
 	*/*.o */*.d */*.asm */*.sym \
 	*/*/*.o */*/*.d */*/*.asm */*/*.sym \
 	$(USER_DIR)/initcode $(USER_DIR)/initcode.out $(KERNEL_DIR)/kernel \
-	 .gdbinit $(USER_DIR)/usys.S $(UPROGS)
+	 .gdbinit $(USER_DIR)/usys.S $(UPROGS) fs.img
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
@@ -205,13 +201,28 @@ QEMUOPTS = -machine virt -bios none -kernel $(KERNEL_DIR)/kernel -m 128M -smp $(
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
-qemu: $(KERNEL_DIR)/kernel fs.img
+xv6fs: mkxv6fs README $(UPROGS)
+	$(XV6_FS_TOOL_DIR)/mkxv6fs fs.img README $(UPROGS)
+
+ext2fs: README $(UPROGS)
+	mv $(UPROGS) mnt/
+	rename 's/_//;' mnt/*
+	sudo mke2fs -b 1024 -d mnt fs.img 2500
+	sudo chown $(shell whoami) fs.img
+
+ext2: ext2fs $(KERNEL_DIR)/kernel
+	$(QEMU) $(QEMUOPTS)
+
+xv6: xv6fs $(KERNEL_DIR)/kernel 
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
 
-qemu-gdb: $(KERNEL_DIR)/kernel .gdbinit fs.img
+ext2-gdb: ext2fs .gdbinit
 	@echo "*** Now run 'gdb' in another window." 1>&2
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 
+xv6-gdb: xv6fs .gdbinit
+	@echo "*** Now run 'gdb' in another window." 1>&2
+	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)

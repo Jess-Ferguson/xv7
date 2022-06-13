@@ -32,7 +32,6 @@ struct inode_operations {
 	void (*iupdate)(struct inode * ip);
 	void (*itrunc)(struct inode * ip);
 	uint (*bmap)(struct inode * ip, uint bn);
-	void (*cleanup)(struct inode * ip);
 	void (*ilock)(struct inode * ip);
 	void (*iput)(struct inode * ip);
 	void (*iunlock)(struct inode * ip);
@@ -40,48 +39,51 @@ struct inode_operations {
 	struct inode * (*idup)(struct inode *ip);
 	void (*stati)(struct inode * ip, struct stat * st);
 	int (*readi)(struct inode *ip, int user_dst, uint64 dst, uint off, uint n);
-	int (*writei)(struct inode * ip, int user_src, uint64 src, uint off, uint n);
-	int (*dir_link)(struct inode * dp, char * name, uint inum);
-	int (*unlink)(struct inode * dp, uint off);
-	int (*is_dir_empty)(struct inode * dp);
+	int (*writei)(struct inode *ip, int user_dst, uint64 dst, uint off, uint n);
+	int (*dir_link)(struct inode * dp, char * name, uint inum, uint type);
 };
 
 #define NDIRECT 12
 #define NINDIRECT (BSIZE / sizeof(uint))
 #define MAXFILE (NDIRECT + NINDIRECT)
 
-// in-memory copy of an inode
-struct inode {
-	uint dev;                     // Minor Device number
-	uint inum;                    // Inode number
-	int ref;                      // Reference count
-	int flags;                    // I_BUSY, I_VALID
-	struct inode_operations * inode_ops; // The specific inode operations
-	struct sleeplock lock; // protects everything below here
-	union {
-		struct xv6_inode xv6_inode;
-	};               // File System specific informations
+#define INODE_FREE 0
+#define INODE_RESERVED 1
 
-	int valid;
-	short type;           // File type
-	short major;          // Major device number (T_DEV only)
-	short minor;          // Minor device number (T_DEV only)
-	short nlink;          // Number of links to inode in file system
-	uint size;            // Size of file (bytes)
-	uint addrs[NDIRECT+1];
+#define I_BUSY 0x1
+#define I_VALID 0x2
+
+/* In-memory filesystem-agnostic inode structure */
+
+struct inode {
+	uint dev;
+	uint inum;
+	int ref;
+	int flags;
+	/* Set of function pointers specifying inode operations */
+	struct inode_operations * inode_ops;
+	/* Set of function pointers specifying file system operations */
+	struct vfs_operations * vfs_ops; 
+	/* Set of different possible file system inodes */
+	union {
+		struct xv6_inode * xv6_inode; /* This should be modified to also use a pointer */
+		struct ext2_inode_mem * ext2_inode;
+	}; 
+	short type;
+	short major;
+	short minor;
+	short nlink;
+	uint size;
 };
 
+ /* Attempt to read the super block, return -1 on failure */
+
 struct vfs_operations {
-	int (*initialise_fs)(void);
-	int (*mount)(struct inode * fs_root_inode, struct inode * target_inode); /* Mount fs_root_inode to target_inode */ 
-	int (*unmount)(struct inode * fs_root_inode);
-	struct inode * (*iget)(uint dev, uint inum);
-	struct inode * (*get_root)(int minor, int major);
-	int (*read_super)(int dev, struct superblock * super); /* Attempt to read the super block, return -1 on failure */
+	struct inode * (*get_root)(unsigned int dev);
+	int (*read_super)(int dev, struct superblock * super);
 	struct inode * (*ialloc)(uint dev, short type);
-	void (*ifree)(struct inode *);
 	uint (*balloc)(uint dev);
-	void (*bzero)(int dev, int block_num);
+	void (*bzero)(int dev, uint block_num);
 	void (*bfree)(int dev, uint block_num);
 	void (*brelease)(struct buf * buffer);
 	void (*bwrite)(struct buf * buffer);
@@ -92,14 +94,13 @@ struct vfs_operations {
 struct superblock {
 	short device;						/* Device number associated with the superblock */
 	uint block_size;					/* Size of each block */
-	struct vfs_operations * vfs_ops;	/* Function pointers containing superblock operations for this fs */ 
+	struct vfs_operations * vfs_ops;	/* Function pointers containing superblock operations for this filesystem */
 	uint magic;        					/* File system magic number */
-	uint flags;
 	uint size; 	        				/* Size of file system image (blocks) */
 	union {
 		struct xv6_superblock xv6_superblock;
-		struct ext2_superblock ext2_superblock;
-	};
+		struct ext2_superblock_mem ext2_in_mem_super;
+	};									
 };
 
 struct vfs {
